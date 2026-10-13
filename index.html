@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PI Planning Bord</title>
+<meta name="description" content="Maak PI-planningslides met categorieën, cards en confidence, en exporteer ze naar PowerPoint.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23003615'/%3E%3Crect x='7' y='8' width='5' height='16' rx='2' fill='%2300B332'/%3E%3Crect x='14' y='8' width='5' height='10' rx='2' fill='%2376B4FC'/%3E%3Crect x='21' y='8' width='5' height='13' rx='2' fill='%23FF8F68'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap">
+<style>
+/* Thema: alle kleuren staan hier. */
+:root{
+  /* App */
+  --bg:#003615; --bg-raised:#0F4223; --bg-raised-2:#1F4E31; --bg-stage:#00260F; --bg-fullscreen:#001809;
+  --accent:#00B332; --accent-hover:#2BC957; --accent-text:#00792A; --accent-soft:#E4F8DF;
+  --on-dark:#FFFFFF; --on-dark-muted:#A9C6B0; --on-dark-line:#406850;
+  --panel:#FFFFFF; --soft:#EEF6F0; --ink:#002A10; --muted:#4F6B58; --line:#D2E3D7; --line-strong:#B4CDBB;
+  --danger:#D2402B; --warn:#FF7A59; --warn-text:#FFB199;
+  /* Slide */
+  --slide-bg:#003615; --slide-lane:#0F4223; --slide-head:#1F4E31; --slide-text:#FFFFFF; --slide-eyebrow:#2BC957;
+  --card:#FFFFFF; --card-title:#002A10; --card-text:#3B5A45; --card-placeholder:#7C9584;
+  /* Categoriekleuren (in volgorde), confidence 1 t/m 5, uitkomst na de PI */
+  --cat-colors:#76B4FC,#FF8F68,#D3F476,#C397FE,#00E169,#00B332,#7FDC8F,#C6F1CF,#FFFFFF,#3FC4A0,#E3F38A;
+  --conf-colors:#E2533C,#F2913A,#F4C93E,#9BDB6E,#00B332;
+  --result-done:#00E169; --result-partial:#F4C93E; --result-missed:#FF8F68;
+
+  --r-lg:20px; --r-md:12px; --r-sm:8px;
+  --font:"Figtree","Helvetica Neue",Arial,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--on-dark);font-family:var(--font);font-size:14px;line-height:1.45}
+button,input,select,textarea{font-family:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.app{max-width:1520px;margin:0 auto;padding-inline:24px;padding-block:20px 56px;display:flex;flex-direction:column;gap:16px}
+@media (max-width:600px){.app{padding-inline:16px}}
+
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:16px 36px;padding-block:6px 4px}
+.brand{display:flex;flex-direction:column;gap:2px;flex:1 1 260px;min-width:0}
+.eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-hover)}
+.pi-input{font-weight:800;font-size:34px;line-height:1.1;letter-spacing:-.01em;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--on-dark);padding:2px 0;width:100%;min-width:0}
+.pi-input:hover{border-bottom-color:var(--on-dark-line)}
+.pi-input:focus{outline:none;border-bottom-color:var(--accent)}
+.pi-input::placeholder{color:var(--on-dark-muted)}
+.conf-summary{display:flex;align-items:center;gap:16px;background:var(--bg-raised);border-radius:var(--r-lg);padding:12px 20px 12px 16px}
+.cs-num{font-weight:800;font-size:44px;line-height:1;color:var(--c);font-variant-numeric:tabular-nums;min-width:2.4ch;text-align:right;letter-spacing:-.02em}
+.cs-meta{display:flex;flex-direction:column;gap:5px}
+.cs-label{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.cs-sub{font-size:13px;color:var(--on-dark-muted);font-variant-numeric:tabular-nums}
+.cs-dist{display:flex;gap:2px;height:8px;width:180px;max-width:100%;border-radius:4px;overflow:hidden;background:var(--bg-raised-2)}
+.actions{display:flex;gap:8px;align-items:center}
+.btn{font-weight:700;font-size:14px;padding:11px 18px;border-radius:999px;border:2px solid var(--on-dark-line);background:transparent;color:var(--on-dark);cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:var(--on-dark)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+.btn.primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn:disabled{opacity:.6;cursor:progress}
+.more{position:relative}
+.more summary{list-style:none}
+.more summary::-webkit-details-marker{display:none}
+.menu{position:absolute;right:0;top:calc(100% + 8px);background:var(--panel);border-radius:var(--r-md);box-shadow:0 16px 40px rgba(0,0,0,.3);padding:6px;display:flex;flex-direction:column;min-width:230px;z-index:30}
+.menu button{text-align:left;background:transparent;border:0;border-radius:var(--r-sm);padding:10px 12px;font-size:14px;font-weight:500;color:var(--ink);cursor:pointer}
+.menu button:hover{background:var(--soft)}
+.menu hr{border:0;border-top:1px solid var(--line);margin:4px 2px}
+
+.notice{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;background:var(--bg-raised);padding:10px 12px 10px 18px;border-radius:var(--r-md);color:var(--on-dark-muted)}
+.notice b{color:var(--on-dark)}
+.notice .sp{flex:1}
+.notice .link-btn{color:var(--on-dark);border-color:var(--on-dark-line)}
+.notice .icon-btn{color:var(--on-dark-muted)}
+.notice .icon-btn:hover:not(:disabled){background:var(--bg-raised-2);border-color:transparent;color:var(--on-dark)}
+
+.tabs{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tab{padding:8px 14px 8px 10px;border-radius:999px;border:0;background:var(--bg-raised);display:flex;gap:8px;align-items:center;cursor:pointer;font-size:14px;font-weight:600;color:var(--on-dark-muted);max-width:320px;min-width:0}
+.tab:hover{color:var(--on-dark);background:var(--bg-raised-2)}
+.tab[aria-current="true"]{background:var(--panel);color:var(--ink)}
+.t-idx{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;background:var(--bg-raised-2);color:var(--on-dark);flex:none}
+.tab[aria-current="true"] .t-idx{background:var(--accent);color:var(--bg)}
+.t-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.t-conf{font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;font-variant-numeric:tabular-nums}
+.tab-ghost{background:transparent;border:2px dashed var(--on-dark-line);padding:6px 14px}
+.tab-ghost:hover{background:transparent;border-color:var(--on-dark-muted)}
+
+.work{display:grid;grid-template-columns:minmax(330px,440px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:960px){.work{grid-template-columns:minmax(0,1fr)}.stage{position:static!important;order:-1}}
+
+.editor{background:var(--panel);color:var(--ink);border-radius:var(--r-lg);display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.modes{display:flex;gap:4px;padding:8px;background:var(--soft)}
+.modes button{flex:1;padding:9px;border-radius:999px;border:0;background:transparent;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer}
+.modes button[aria-pressed="true"]{background:var(--bg);color:var(--on-dark)}
+.ed-body{padding:18px;display:flex;flex-direction:column;gap:26px}
+.blk{display:flex;flex-direction:column;gap:10px}
+.blk h3,.lbl{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);margin:0}
+.blk-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.blk.res-blk{border-top:1px solid var(--line);padding-top:18px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.field{width:100%;font-size:14px;font-weight:500;color:var(--ink);background:var(--panel);border:1.5px solid var(--line);border-radius:var(--r-sm);padding:9px 11px;min-width:0}
+.field::placeholder{color:var(--muted);opacity:.75}
+.field:hover{border-color:var(--line-strong)}
+.field:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+textarea.field{resize:vertical;min-height:58px;line-height:1.45;font-weight:400;font-size:13.5px}
+.group{border-radius:var(--r-md);padding:12px;display:flex;flex-direction:column;gap:9px;background:var(--soft)}
+.row{display:flex;gap:4px;align-items:center;min-width:0}
+.row .field{flex:1}
+.g-name{font-weight:700}
+.swatches{display:flex;flex-wrap:wrap;gap:7px;padding-left:2px}
+.sw,.catsec-head .dot{border-radius:50%;border:1.5px solid color-mix(in srgb,var(--ink) 18%,transparent)}
+.sw{width:20px;height:20px;cursor:pointer;padding:0}
+.sw[aria-pressed="true"]{box-shadow:0 0 0 2px var(--soft),0 0 0 4px var(--ink)}
+.cats{display:flex;flex-direction:column;gap:6px;padding-left:12px;border-left:3px solid var(--gc)}
+.icon-btn{width:32px;height:32px;flex:none;border:1px solid transparent;background:transparent;border-radius:999px;color:var(--muted);cursor:pointer;display:grid;place-items:center;font-size:15px;line-height:1}
+.icon-btn:hover:not(:disabled){background:var(--panel);border-color:var(--line);color:var(--ink)}
+.icon-btn:disabled{opacity:.3;cursor:default}
+.icon-btn.armed{width:auto;padding:0 10px;font-size:12px;font-weight:700}
+.link-btn{align-self:flex-start;background:transparent;border:1.5px dashed var(--line-strong);color:var(--accent-text);font-size:13.5px;font-weight:700;padding:7px 14px;border-radius:999px;cursor:pointer}
+.link-btn:hover{border-color:var(--accent);border-style:solid}
+.link-btn.danger{color:var(--danger)}
+.armed,.armed:hover{background:var(--danger)!important;border-color:var(--danger)!important;border-style:solid!important;color:var(--on-dark)!important}
+.switch{display:flex;gap:10px;align-items:center;cursor:pointer;font-size:14px}
+.switch input{width:18px;height:18px;accent-color:var(--accent);margin:0}
+
+.catsec{display:flex;flex-direction:column;gap:8px}
+.catsec-head{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:700;min-width:0}
+.catsec-head .dot{width:12px;height:12px;background:var(--gc);flex:none}
+.catsec-head .crumb{color:var(--muted);font-weight:500}
+.catsec-head .count{margin-left:auto;font-size:12px;font-weight:700;color:var(--muted);background:var(--soft);border-radius:999px;padding:1px 8px;font-variant-numeric:tabular-nums}
+.ecard{border:1.5px solid var(--line);border-radius:var(--r-md);padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--panel);scroll-margin:90px}
+.ecard.flash{animation:flash 1.4s ease-out}
+@keyframes flash{0%{box-shadow:0 0 0 4px var(--accent)}100%{box-shadow:0 0 0 4px transparent}}
+.ec-title{font-weight:700}
+.ec-foot{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.ec-sprint{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.span-chip{font-size:12px;font-weight:700;color:var(--ink);background:var(--accent-soft);border-radius:999px;padding:3px 9px}
+.seg{display:flex;gap:4px;align-items:center;flex:none}
+.seg-l{font-size:12.5px;color:var(--muted);margin-right:4px}
+.seg button{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);background:var(--panel);font-size:13px;font-weight:700;color:var(--ink);cursor:pointer;font-variant-numeric:tabular-nums}
+.seg button:hover{border-color:var(--cc)}
+.seg button[aria-pressed="true"]{background:var(--cc);border-color:var(--cc);color:var(--ct)}
+.res-seg button{width:auto;border-radius:999px;padding:0 10px;font-size:12.5px;white-space:nowrap}
+.mini-select{font-size:12.5px;font-weight:600;border:1.5px solid var(--line);border-radius:999px;padding:5px 8px;background:var(--panel);color:var(--ink);max-width:170px;min-width:0}
+
+.cr-slide{display:flex;flex-direction:column;gap:6px}
+.cr-head{display:flex;justify-content:space-between;gap:10px;font-size:14px;font-weight:800;padding-bottom:2px}
+.cr-avg{white-space:nowrap;font-variant-numeric:tabular-nums}
+.cr-avg small{color:var(--muted);font-weight:500}
+.cr-item{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:9px 12px;border-radius:var(--r-md);background:var(--soft)}
+.cr-t{flex:1 1 160px;min-width:0}
+.cr-t b{display:block;font-weight:700;overflow-wrap:anywhere}
+.cr-t small{color:var(--muted);font-size:12.5px}
+.cr-res-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;flex-basis:100%}
+.cr-res{padding:0 2px 4px}
+.res-line{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;font-size:13px}
+.res-line b{font-weight:800}
+.res-dot{display:inline-flex;align-items:center;gap:6px;color:var(--muted)}
+.res-dot::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--cc)}
+.res-total{display:flex;flex-direction:column;gap:4px;background:var(--soft);border-radius:var(--r-md);padding:10px 12px}
+.res-total small{color:var(--muted);font-size:12.5px}
+
+.stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:10px;min-width:0}
+.stage-bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between}
+.fit{font-size:13px;color:var(--on-dark-muted);display:flex;align-items:center;gap:7px}
+.fit::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.fit.warn{color:var(--warn-text);font-weight:700}
+.fit.warn::before{background:var(--warn)}
+.stage-ctrl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.stage-ctrl label{font-size:13px;color:var(--on-dark-muted)}
+.stage-ctrl .mini-select{background:var(--bg-raised);color:var(--on-dark);border-color:var(--on-dark-line)}
+.stage-ctrl .btn{padding:7px 14px;font-size:13px}
+.viewport{background:var(--bg-stage);border-radius:var(--r-lg);padding:18px}
+.viewport:fullscreen{display:flex;align-items:center;justify-content:center;background:var(--bg-fullscreen);padding:0;border-radius:0}
+.slide-wrap{position:relative;overflow:hidden;margin:0 auto;border-radius:6px;box-shadow:0 0 0 1px var(--on-dark-line),0 14px 34px rgba(0,0,0,.35)}
+.viewport:fullscreen .slide-wrap{border-radius:0;box-shadow:none}
+.viewport:not(:fullscreen) .card{cursor:pointer}
+.viewport:not(:fullscreen) .card:hover{outline:3px solid var(--accent);outline-offset:1px}
+
+.slide{position:absolute;top:0;left:0;width:1280px;height:720px;transform-origin:top left;background:var(--slide-bg);color:var(--slide-text);font-family:var(--font);display:flex;flex-direction:column;gap:20px;padding:36px 44px 34px}
+.s-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px}
+.s-titles{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1 1 auto}
+.s-eyebrow{font-size:14px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--slide-eyebrow);line-height:18px}
+.s-title{font-size:34px;font-weight:800;line-height:40px}
+.s-pills{display:flex;gap:10px;flex:none}
+.s-pill{display:flex;align-items:center;gap:14px;padding:7px 7px 7px 20px;background:var(--slide-lane);border-radius:30px}
+.s-pill-label{font-size:12.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;line-height:16px}
+.s-pill-val{width:72px;height:38px;display:flex;border-radius:19px}
+.s-pill-val span{display:block;width:100%;font-size:21px;font-weight:800;line-height:38px;text-align:center}
+.s-grid{flex:1;min-height:0;display:grid;gap:calc(7px * var(--s))}
+.g-head{display:flex;align-items:center;padding:calc(8px * var(--s)) calc(12px * var(--s));min-width:0;border-radius:calc(10px * var(--s))}
+.g-head span{display:block;font-size:calc(13px * var(--s));font-weight:800;letter-spacing:.9px;text-transform:uppercase;line-height:1.3;overflow-wrap:anywhere}
+.c-head{background:var(--slide-head);padding:calc(7px * var(--s)) calc(12px * var(--s));min-width:0;border-radius:calc(8px * var(--s))}
+.c-head span{display:block;font-size:calc(14.5px * var(--s));font-weight:700;line-height:1.3;overflow-wrap:anywhere}
+.r-head{background:var(--slide-lane);padding:calc(10px * var(--s));min-height:0;overflow:hidden;border-radius:calc(10px * var(--s))}
+.r-head span{display:block;font-size:calc(13.5px * var(--s));font-weight:700;line-height:1.3}
+.lane{background:var(--slide-lane);border-radius:calc(12px * var(--s));min-height:0}
+.cell{min-height:0;min-width:0;overflow:hidden;display:flex;flex-direction:column;gap:calc(7px * var(--s))}
+.card{flex:none;background:var(--card);padding:calc(9px * var(--s)) calc(11px * var(--s)) calc(12px * var(--s));display:flex;flex-direction:column;gap:calc(4px * var(--s));border-radius:calc(9px * var(--s))}
+.card.span{flex:1 1 auto}
+.c-span{font-size:calc(10.5px * var(--s));font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--accent-text);line-height:1.3}
+.c-top{display:flex;gap:calc(8px * var(--s));align-items:flex-start}
+.c-title{flex:1;min-width:0;font-size:calc(14.5px * var(--s));font-weight:800;line-height:1.28;color:var(--card-title);overflow-wrap:anywhere}
+.c-title.ph{color:var(--card-placeholder);font-weight:500}
+.c-badge{flex:none;width:calc(24px * var(--s));height:calc(24px * var(--s));border-radius:50%;display:flex}
+.c-badge span{display:block;width:100%;text-align:center;font-size:calc(12.5px * var(--s));font-weight:800;line-height:calc(24px * var(--s))}
+.c-desc{font-size:calc(12.5px * var(--s));line-height:1.4;color:var(--card-text);white-space:pre-line;overflow-wrap:anywhere}
+.c-res-row{display:flex;padding-top:calc(2px * var(--s))}
+.c-res{border-radius:calc(10px * var(--s));padding:0 calc(8px * var(--s))}
+.c-res span{display:block;font-size:calc(11px * var(--s));font-weight:800;line-height:calc(19px * var(--s));white-space:nowrap}
+.s-empty{flex:1;display:grid;place-items:center;border:2px dashed var(--on-dark-line);border-radius:16px;color:var(--on-dark-muted);font-size:19px}
+.export-host{position:fixed;left:-30000px;top:0;width:1280px;height:720px;pointer-events:none}
+
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);transform:translateX(-50%);background:var(--panel);color:var(--ink);padding:11px 18px;border-radius:999px;font-size:14px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.35);z-index:50;max-width:calc(100% - 32px)}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion:reduce){.ecard.flash{animation:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <label class="eyebrow" for="piName">Planning-increment</label>
+      <input id="piName" class="pi-input" autocomplete="off" placeholder="Bijv. PI 26.4">
+    </div>
+    <div class="conf-summary" id="confSummary" aria-live="polite"></div>
+    <div class="actions">
+      <button class="btn primary" id="btnPptx" type="button">Exporteer PowerPoint</button>
+      <details class="more" id="moreMenu">
+        <summary class="btn">Meer</summary>
+        <div class="menu">
+          <button type="button" data-menu="json">Bord opslaan als JSON</button>
+          <button type="button" data-menu="import">JSON importeren…</button>
+          <hr>
+          <button type="button" data-menu="example">Voorbeeld laden</button>
+          <button type="button" data-menu="reset">Leeg beginnen</button>
+        </div>
+      </details>
+      <input type="file" id="fileIn" accept=".json,application/json" class="vh" tabindex="-1" aria-hidden="true">
+    </div>
+  </header>
+
+  <div class="notice" id="notice" hidden>
+    <span><b>Voorbeeldinhoud.</b> Vervang de cards door die van jullie PI, of begin met een leeg bord.</span>
+    <span class="sp"></span>
+    <button class="link-btn" type="button" id="noticeReset">Leeg beginnen</button>
+    <button class="icon-btn" type="button" id="noticeClose" aria-label="Melding sluiten">×</button>
+  </div>
+
+  <nav class="tabs" id="slideTabs" aria-label="Slides"></nav>
+
+  <main class="work">
+    <section class="editor" aria-label="Editor">
+      <div class="modes">
+        <button type="button" data-mode="content">Inhoud</button>
+        <button type="button" data-mode="conf">Confidence &amp; uitkomst</button>
+      </div>
+      <div class="ed-body" id="editor"></div>
+    </section>
+
+    <section class="stage" aria-label="Voorbeeld van de slide">
+      <div class="stage-bar">
+        <span class="fit" id="fitStatus">Alles past</span>
+        <div class="stage-ctrl">
+          <label for="showConf">Confidence op slide</label>
+          <select id="showConf" class="mini-select">
+            <option value="pi">Hele PI</option>
+            <option value="slide">Per slide</option>
+            <option value="off">Verbergen</option>
+          </select>
+          <label for="showResult">Uitkomst</label>
+          <select id="showResult" class="mini-select">
+            <option value="0">Verbergen</option>
+            <option value="1">Tonen</option>
+          </select>
+          <button class="btn" type="button" id="btnPresent">Presenteer</button>
+        </div>
+      </div>
+      <div class="viewport" id="viewport"><div class="slide-wrap" id="slideWrap"></div></div>
+    </section>
+  </main>
+  <div class="toast" id="toast" role="status" hidden></div>
+</div>
+
+<script>
+(function(){
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const uid=()=>Math.random().toString(36).slice(2,9);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>n.toFixed(1).replace('.',',');
+
+const css=getComputedStyle(document.documentElement);
+const tok=n=>css.getPropertyValue(n).trim();
+const list=n=>tok(n).split(',').map(s=>s.trim().toUpperCase());
+const SLIDE_BG=tok('--slide-bg'), INK=tok('--ink'), CARD=tok('--card'), CARD_TITLE=tok('--card-title');
+const COLORS=list('--cat-colors');
+const CONF=[null,...list('--conf-colors')];
+const CONF_LABEL=[null,'geen vertrouwen','weinig vertrouwen','redelijk','goed','zeer zeker'];
+const RESULTS={
+  done:{label:'Voltooid',short:'✓',color:tok('--result-done'),score:1},
+  partial:{label:'Half',short:'½',color:tok('--result-partial'),score:.5},
+  missed:{label:'Niet gehaald',short:'✕',color:tok('--result-missed'),score:0}
+};
+const rgb=hex=>{const n=parseInt(hex.slice(1),16);return [n>>16,n>>8&255,n&255]};
+const lum=hex=>{const c=rgb(hex).map(v=>{v/=255;return v<=.03928?v/12.92:((v+.055)/1.055)**2.4});return .2126*c[0]+.7152*c[1]+.0722*c[2]};
+const inkFor=hex=>lum(hex)>.18?INK:'#FFFFFF';
+const confInk=v=>inkFor(CONF[v]);
+const tint=(hex,t)=>'#'+rgb(hex).map(v=>Math.round(v+(255-v)*t).toString(16).padStart(2,'0')).join('');
+const KEY='pi-planning-bord';
+
+function mkSlide(title,groups){
+  return {id:uid(),title,useRows:false,rows:[],cards:[],
+    groups:groups.map(([name,ci,cats])=>({id:uid(),name,color:COLORS[ci%COLORS.length],cats:cats.map(n=>({id:uid(),name:n}))}))};
+}
+const mkCard=(catId,rowId,title='',desc='',conf=null)=>({id:uid(),catId,rowId,rowSpan:1,title,desc,conf,result:null});
+function exampleState(){
+  const slide=(title,groups,cards)=>{const S=mkSlide(title,groups),all=S.groups.flatMap(g=>g.cats);
+    for(const [cn,items] of Object.entries(cards)){const cat=all.find(c=>c.name===cn);items.forEach(([t,d,c])=>S.cards.push(mkCard(cat.id,null,t,d,c)))}
+    return S};
+  return {piName:'PI 26.4',showConf:'pi',showResult:false,isExample:true,ui:{slide:0,mode:'content'},slides:[
+    slide('Wat we deze PI opleveren',[['Klantreis',0,['Aanvragen','Mijn omgeving']],['Service',1,['Melden','Opvolging']],['Platform',2,['Data & inzicht']]],{
+      'Aanvragen':[['Aanmelden in 3 stappen','Nieuwe klant maakt in drie stappen een account aan, met link naar de volledige intake.',4],['Aanvraag direct online afronden','Klant rondt een aanvraag volledig online af, zonder tussenkomst van een medewerker.',3]],
+      'Mijn omgeving':[['Overzicht per vestiging','Klanten met meerdere vestigingen filteren hun producten per locatie.',4],['Documenten downloaden','Facturen en overeenkomsten als PDF beschikbaar in de klantomgeving.',5]],
+      'Melden':[["Melding met foto's","Tot tien foto's toevoegen bij een melding. Doel: melden in minder dan vijf minuten.",3]],
+      'Opvolging':[['Status van een melding volgen','Klant ziet in welke stap de behandeling is en wie de behandelaar is.',2]],
+      'Data & inzicht':[['Funnel-dashboard aanvragen','Conversie van start tot afronding per product, wekelijks ververst.',4]]}),
+    slide('Enablers & verbeteringen',[['Techniek',3,['Architectuur','Kwaliteit']],['Team',4,['Werkwijze']]],{
+      'Architectuur':[['Migratie naar nieuwe API-gateway','Alle endpoints via de nieuwe gateway; oude koppeling uitzetten na de PI.',2]],
+      'Kwaliteit':[['Toegankelijkheid WCAG 2.2 AA','Audit van alle formulierflows en de tien zwaarste bevindingen oplossen.',4],['Testautomatisering aanvraagflow','Happy flow en vijf foutscenario’s automatisch getest in de pipeline.',null]],
+      'Werkwijze':[['Vaste research-cadans','Elke twee weken vijf klantgesprekken; inzichten in de gedeelde repository.',5]]})
+  ]};
+}
+function emptyState(pi){
+  return {piName:pi||'PI',showConf:'pi',showResult:false,isExample:false,ui:{slide:0,mode:'content'},
+    slides:[1,2].map(n=>mkSlide('Slide '+n,[['Overkoepelende categorie',0,['Categorie A','Categorie B']]]))};
+}
+function normalize(o){
+  if(!o||!Array.isArray(o.slides)||!o.slides.length)throw new Error('Geen slides gevonden in dit bestand.');
+  const ids=new Map(),id=v=>{const s=String(v??'');if(/^[\w-]{1,40}$/.test(s))return s;if(!ids.has(s))ids.set(s,uid());return ids.get(s)};
+  const arr=v=>Array.isArray(v)?v:[], str=v=>String(v??'');
+  const hex=c=>/^#[0-9a-f]{6}$/i.test(c)?c.toUpperCase():COLORS[0];
+  const slides=o.slides.map(s=>{
+    const groups=arr(s.groups).map(g=>({id:id(g.id||uid()),name:str(g.name),color:hex(g.color),cats:arr(g.cats).map(c=>({id:id(c.id||uid()),name:str(c.name)}))}));
+    const catIds=new Set(groups.flatMap(g=>g.cats.map(c=>c.id)));
+    return {id:id(s.id||uid()),title:str(s.title),useRows:!!s.useRows,groups,
+      rows:arr(s.rows).map(r=>({id:id(r.id||uid()),name:str(r.name)})),
+      cards:arr(s.cards).map(k=>({...k,catId:id(k.catId)})).filter(k=>catIds.has(k.catId)).map(k=>({id:id(k.id||uid()),catId:k.catId,
+        rowId:k.rowId?id(k.rowId):null,rowSpan:Math.max(1,Math.min(52,Math.floor(+k.rowSpan)||1)),title:str(k.title),desc:str(k.desc),
+        conf:[1,2,3,4,5].includes(+k.conf)?+k.conf:null,result:RESULTS[k.result]?k.result:null}))};
+  });
+  const ui=o.ui||{};
+  return {piName:str(o.piName||'PI'),showConf:['pi','slide','off'].includes(o.showConf)?o.showConf:'pi',showResult:!!o.showResult,isExample:!!o.isExample,
+    ui:{slide:Math.min(Math.max(0,+ui.slide||0),slides.length-1),mode:ui.mode==='conf'?'conf':'content'},slides};
+}
+let state;
+try{const raw=localStorage.getItem(KEY);state=raw?normalize(JSON.parse(raw)):exampleState()}catch(e){state=exampleState()}
+let saveT;
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}},250)}
+
+const cur=()=>state.slides[state.ui.slide];
+const allCards=()=>state.slides.flatMap(s=>s.cards);
+const catsOf=S=>S.groups.flatMap(g=>g.cats.map(c=>({...c,g})));
+const findGroup=id=>cur().groups.find(g=>g.id===id);
+const findCat=id=>cur().groups.flatMap(g=>g.cats).find(c=>c.id===id);
+function findCard(id){for(const S of state.slides){const k=S.cards.find(c=>c.id===id);if(k)return{k,S}}return{}}
+const rowOf=(k,S)=>S.rows.some(r=>r.id===k.rowId)?k.rowId:(S.rows[0]?.id??null);
+function spanOf(k,S){
+  const a=Math.max(0,S.rows.findIndex(r=>r.id===rowOf(k,S)));
+  return {a,b:Math.min(S.rows.length-1,a+Math.max(1,k.rowSpan||1)-1)};
+}
+function stats(cards){
+  const v=cards.map(c=>c.conf).filter(Boolean),dist=[0,0,0,0,0,0];v.forEach(x=>dist[x]++);
+  return {n:v.length,avg:v.length?v.reduce((a,b)=>a+b,0)/v.length:null,dist};
+}
+function resStats(cards){
+  const r={done:0,partial:0,missed:0,n:0,pct:null};let sc=0;
+  cards.forEach(k=>{if(RESULTS[k.result]){r[k.result]++;r.n++;sc+=RESULTS[k.result].score}});
+  if(r.n)r.pct=Math.round(sc/r.n*100);
+  return r;
+}
+
+function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(t._t);t._t=setTimeout(()=>t.hidden=true,3200)}
+function armed(b,label){
+  if(b.classList.contains('armed')){b.classList.remove('armed');clearTimeout(b._t);b.innerHTML=b._orig;return true}
+  b._orig=b.innerHTML;b.classList.add('armed');b.textContent=label||'Bevestig';
+  b._t=setTimeout(()=>{b.classList.remove('armed');b.innerHTML=b._orig},3000);return false;
+}
+let prevT;
+function changed(opts={}){
+  save();renderSummary();renderTabs();
+  if(opts.editor)renderEditor();
+  clearTimeout(prevT);prevT=setTimeout(renderPreview,60);
+}
+const keepScroll=fn=>{const y=window.scrollY;fn();window.scrollTo(0,y)};
+const focusLater=sel=>requestAnimationFrame(()=>{const e=$(sel);if(e){e.focus();e.select?.()}});
+
+function renderSummary(){
+  const all=allCards(),st=stats(all),r=st.avg?Math.round(st.avg):0;
+  $('#confSummary').innerHTML=`<div class="cs-num" style="--c:${st.avg?CONF[r]:'var(--on-dark-muted)'}">${st.avg?fmt(st.avg):'–'}</div>
+    <div class="cs-meta"><div class="cs-label">PI-confidence</div>
+    <div class="cs-sub">${st.n} van ${all.length} cards gescoord</div>
+    <div class="cs-dist" role="img" aria-label="Verdeling: ${[1,2,3,4,5].map(v=>v+' ×'+st.dist[v]).join(', ')}">${[1,2,3,4,5].map(v=>st.dist[v]?`<span style="flex:${st.dist[v]};background:${CONF[v]}" title="${v}: ${st.dist[v]}×"></span>`:'').join('')}</div></div>`;
+  $('#notice').hidden=!state.isExample;
+}
+function renderTabs(){
+  const i0=state.ui.slide;
+  $('#slideTabs').innerHTML=state.slides.map((S,i)=>{const st=stats(S.cards),r=st.avg?Math.round(st.avg):0;
+    return `<button type="button" class="tab" aria-current="${i===i0}" data-tab="${i}"><span class="t-idx">${i+1}</span><span class="t-name">${esc(S.title||'Naamloze slide')}</span>${st.avg?`<span class="t-conf" style="background:${CONF[r]};color:${confInk(r)}">${fmt(st.avg)}</span>`:''}</button>`}).join('')
+    +`<button type="button" class="tab tab-ghost" data-tabact="add">+ Slide</button>`
+    +(state.slides.length>1?`<button type="button" class="tab tab-ghost" data-tabact="del">Verwijder slide ${i0+1}</button>`:'');
+}
+
+function seg(k,label=true){
+  return `<div class="seg" role="group" aria-label="Confidence">${label?'<span class="seg-l">Confidence</span>':''}${[1,2,3,4,5].map(v=>
+    `<button type="button" data-act="conf" data-id="${k.id}" data-v="${v}" aria-pressed="${k.conf===v}" style="--cc:${CONF[v]};--ct:${confInk(v)}" title="${v} – ${CONF_LABEL[v]}">${v}</button>`).join('')}</div>`;
+}
+function resSeg(k){
+  return `<div class="seg res-seg" role="group" aria-label="Uitkomst na de PI">${Object.entries(RESULTS).map(([key,R])=>
+    `<button type="button" data-act="result" data-id="${k.id}" data-v="${key}" aria-pressed="${k.result===key}" style="--cc:${R.color};--ct:${inkFor(R.color)}"><span aria-hidden="true">${R.short}</span> ${R.label}</button>`).join('')}</div>`;
+}
+function sprintPicker(k,S){
+  const {a,b}=spanOf(k,S);
+  return `<div class="ec-sprint"><span class="seg-l">Sprint</span>
+    <select class="mini-select" id="sr-${k.id}" data-f2="cardRow" data-id="${k.id}" aria-label="Start-sprint">${S.rows.map((r,i)=>`<option value="${r.id}" data-ropt="${r.id}" ${i===a?'selected':''}>${esc(r.name||'Rij')}</option>`).join('')}</select>
+    <span class="seg-l">t/m</span>
+    <select class="mini-select" id="se-${k.id}" data-f2="cardRowEnd" data-id="${k.id}" aria-label="Eind-sprint">${S.rows.map((r,i)=>i<a?'':`<option value="${i}" data-ropt="${r.id}" ${i===b?'selected':''}>${esc(r.name||'Rij')}</option>`).join('')}</select>
+    ${b>a?`<span class="span-chip">${b-a+1} sprints</span>`:''}</div>`;
+}
+function ecard(k,S,cats){
+  return `<article class="ecard" id="ec-${k.id}">
+    <input class="field ec-title" id="t-${k.id}" data-f="cardTitle" data-id="${k.id}" value="${esc(k.title)}" placeholder="Titel" aria-label="Titel van de card">
+    <textarea class="field" id="d-${k.id}" data-f="cardDesc" data-id="${k.id}" rows="2" placeholder="Wat houdt dit in detail in?" aria-label="Beschrijving">${esc(k.desc)}</textarea>
+    ${S.useRows&&S.rows.length?sprintPicker(k,S):''}
+    <div class="ec-foot">${seg(k)}
+      <div class="row">
+        <select class="mini-select" id="sc-${k.id}" data-f2="cardCat" data-id="${k.id}" aria-label="Kolom">${cats.map(c=>`<option value="${c.id}" data-opt="${c.id}" ${c.id===k.catId?'selected':''}>${esc(c.g.name)} › ${esc(c.name)}</option>`).join('')}</select>
+        <button type="button" class="icon-btn" data-act="cardMove" data-id="${k.id}" data-v="-1" aria-label="Card omhoog">↑</button>
+        <button type="button" class="icon-btn" data-act="cardMove" data-id="${k.id}" data-v="1" aria-label="Card omlaag">↓</button>
+        <button type="button" class="icon-btn" data-act="delCard" data-id="${k.id}" aria-label="Card verwijderen">×</button>
+      </div>
+    </div>
+  </article>`;
+}
+function renderEditor(){
+  $$('.modes button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===state.ui.mode));
+  $('#editor').innerHTML=state.ui.mode==='conf'?renderConfRound():renderContent(cur());
+}
+function renderContent(S){
+  const ico=(act,id,v,dis,lbl,sym)=>`<button type="button" class="icon-btn" data-act="${act}" data-id="${id}" data-v="${v}" ${dis?'disabled':''} aria-label="${lbl}">${sym}</button>`;
+  let h=`<div class="blk"><label class="lbl" for="f-stitle">Slidetitel</label>
+    <input class="field" id="f-stitle" data-f="slideTitle" value="${esc(S.title)}" placeholder="Bijv. Wat we deze PI opleveren"></div>
+    <div class="blk"><div class="blk-head"><h3>Bovenste as</h3><span class="hint">Overkoepelend › categorie</span></div>`;
+  S.groups.forEach((g,gi)=>{
+    h+=`<div class="group" style="--gc:${g.color}">
+      <div class="row"><input class="field g-name" id="g-${g.id}" data-f="groupName" data-id="${g.id}" value="${esc(g.name)}" placeholder="Overkoepelende categorie" aria-label="Naam overkoepelende categorie">
+        ${ico('gMove',g.id,-1,gi===0,'Naar links','←')}${ico('gMove',g.id,1,gi===S.groups.length-1,'Naar rechts','→')}${ico('delGroup',g.id,'',false,'Overkoepelende categorie verwijderen','×')}</div>
+      <div class="swatches" role="group" aria-label="Kleur">${COLORS.map(c=>`<button type="button" class="sw" style="background:${c}" data-act="color" data-id="${g.id}" data-v="${c}" aria-pressed="${c===g.color}" aria-label="Kleur ${c}"></button>`).join('')}</div>
+      <div class="cats">${g.cats.map((c,ci)=>`<div class="row"><input class="field" id="c-${c.id}" data-f="catName" data-id="${c.id}" value="${esc(c.name)}" placeholder="Categorie" aria-label="Naam categorie">
+        ${ico('cMove',c.id,-1,ci===0,'Naar links','↑')}${ico('cMove',c.id,1,ci===g.cats.length-1,'Naar rechts','↓')}${ico('delCat',c.id,'',false,'Categorie verwijderen','×')}</div>`).join('')}
+        <button type="button" class="link-btn" data-act="addCat" data-id="${g.id}">+ Categorie</button></div>
+    </div>`;
+  });
+  h+=`<button type="button" class="link-btn" data-act="addGroup">+ Overkoepelende categorie</button></div>
+    <div class="blk"><h3>Linker as</h3><label class="switch"><input type="checkbox" id="f-rows" data-f2="useRows" ${S.useRows?'checked':''}><span>Sprints als rijen tonen</span></label>`;
+  if(S.useRows){
+    h+=`<div class="cats" style="--gc:var(--line)">${S.rows.map((r,ri)=>`<div class="row"><input class="field" id="r-${r.id}" data-f="rowName" data-id="${r.id}" value="${esc(r.name)}" placeholder="Sprint" aria-label="Naam rij">
+      ${ico('rMove',r.id,-1,ri===0,'Omhoog','↑')}${ico('rMove',r.id,1,ri===S.rows.length-1,'Omlaag','↓')}${ico('delRow',r.id,'',false,'Rij verwijderen','×')}</div>`).join('')}
+      <button type="button" class="link-btn" data-act="addRow">+ Sprint</button></div>`;
+  }
+  h+=`</div><div class="blk"><div class="blk-head"><h3>Cards</h3><span class="hint">Klik een card op de slide om hem hier te openen</span></div>`;
+  const cats=catsOf(S);
+  if(!cats.length)h+=`<p class="hint">Voeg eerst een categorie toe; elke categorie wordt een kolom.</p>`;
+  cats.forEach(c=>{
+    const cards=S.cards.filter(k=>k.catId===c.id);
+    h+=`<section class="catsec" style="--gc:${c.g.color}"><div class="catsec-head"><span class="dot"></span><span class="crumb" data-lg="${c.g.id}">${esc(c.g.name)}</span><span class="crumb" aria-hidden="true">›</span><span data-lc="${c.id}">${esc(c.name)}</span><span class="count">${cards.length}</span></div>
+      ${cards.map(k=>ecard(k,S,cats)).join('')}
+      <button type="button" class="link-btn" data-act="addCard" data-id="${c.id}">+ Card</button></section>`;
+  });
+  return h+'</div>';
+}
+function resLine(rs){
+  return rs.n?`<span class="res-line"><b>${rs.pct}% gehaald</b>${Object.keys(RESULTS).map(key=>rs[key]?`<span class="res-dot" style="--cc:${RESULTS[key].color}">${rs[key]} ${RESULTS[key].label.toLowerCase()}</span>`:'').join('')}</span>`:'';
+}
+function renderConfRound(){
+  const all=allCards(),rsAll=resStats(all);
+  let h=`<div class="blk"><div class="blk-head"><h3>Confidence-ronde</h3><button type="button" class="link-btn danger" data-act="clearConf">Scores wissen</button></div>
+    <p class="hint">Scoor elke card van 1 (geen vertrouwen) tot 5 (zeer zeker). Klik nogmaals om een score te wissen. De PI-confidence is het gemiddelde van alle gescoorde cards.</p></div>
+    <div class="blk res-blk"><div class="blk-head"><h3>Na de PI</h3>${rsAll.n?'<button type="button" class="link-btn danger" data-act="clearResult">Uitkomsten wissen</button>':''}</div>
+    <p class="hint">Zet per card of hij voltooid, half of niet gehaald is. Het percentage telt voltooid als 100% en half als 50%, over de cards met een uitkomst.</p>
+    ${rsAll.n?`<div class="res-total">${resLine(rsAll)}<small>${rsAll.n} van ${all.length} cards beoordeeld</small></div>`:''}</div>`;
+  state.slides.forEach((S,si)=>{
+    const st=stats(S.cards),rs=resStats(S.cards),useRows=S.useRows&&S.rows.length;
+    h+=`<div class="cr-slide"><div class="cr-head"><span>${si+1}. ${esc(S.title||'Naamloze slide')}</span><span class="cr-avg">${st.avg?fmt(st.avg):'–'} <small>${st.n}/${S.cards.length}</small></span></div>
+      ${rs.n?`<div class="cr-res">${resLine(rs)}</div>`:''}`;
+    catsOf(S).forEach(c=>S.cards.filter(k=>k.catId===c.id).forEach(k=>{
+      const sp=useRows?spanOf(k,S):null;
+      const where=`${esc(c.g.name)} › ${esc(c.name)}${sp?` · ${esc(S.rows[sp.a].name)}${sp.b>sp.a?' – '+esc(S.rows[sp.b].name):''}`:''}`;
+      h+=`<div class="cr-item"><div class="cr-t"><b>${esc(k.title||'Naamloze card')}</b><small>${where}</small></div>${seg(k,false)}
+        <div class="cr-res-row"><span class="seg-l">Na de PI</span>${resSeg(k)}</div></div>`;
+    }));
+    if(!S.cards.length)h+=`<p class="hint">Nog geen cards op deze slide.</p>`;
+    h+='</div>';
+  });
+  return h;
+}
+function refreshLabels(){
+  const S=cur();
+  catsOf(S).forEach(c=>{
+    $$(`[data-lc="${c.id}"]`).forEach(e=>e.textContent=c.name);
+    $$(`[data-opt="${c.id}"]`).forEach(e=>e.textContent=`${c.g.name} › ${c.name}`);
+  });
+  S.groups.forEach(g=>$$(`[data-lg="${g.id}"]`).forEach(e=>e.textContent=g.name));
+  S.rows.forEach(r=>$$(`[data-ropt="${r.id}"]`).forEach(e=>e.textContent=r.name||'Rij'));
+}
+
+const ed=$('#editor');
+ed.addEventListener('input',e=>{
+  const t=e.target,f=t.dataset.f;if(!f)return;const S=cur(),id=t.dataset.id;
+  if(f==='slideTitle')S.title=t.value;
+  else if(f==='groupName')findGroup(id).name=t.value;
+  else if(f==='catName')findCat(id).name=t.value;
+  else if(f==='rowName')S.rows.find(r=>r.id===id).name=t.value;
+  else if(f==='cardTitle')findCard(id).k.title=t.value;
+  else if(f==='cardDesc')findCard(id).k.desc=t.value;
+  refreshLabels();changed();
+});
+ed.addEventListener('change',e=>{
+  const t=e.target,f=t.dataset.f2;if(!f)return;const S=cur();
+  if(f==='useRows'){S.useRows=t.checked;if(S.useRows&&!S.rows.length)S.rows=['Sprint 1','Sprint 2','Sprint 3','Sprint 4','IP-sprint'].map(name=>({id:uid(),name}));changed({editor:true});return}
+  const {k}=findCard(t.dataset.id);if(!k)return;
+  if(f==='cardCat'){k.catId=t.value;changed({editor:true});focusLater('#sc-'+k.id)}
+  if(f==='cardRow'){const keep=k.rowSpan||1;k.rowId=t.value;k.rowSpan=Math.min(keep,S.rows.length-spanOf(k,S).a);changed({editor:true});focusLater('#sr-'+k.id)}
+  if(f==='cardRowEnd'){k.rowSpan=Math.max(1,+t.value-spanOf(k,S).a+1);changed({editor:true});focusLater('#se-'+k.id)}
+});
+ed.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const a=b.dataset.act,id=b.dataset.id,v=b.dataset.v,S=cur();
+  const swap=(arr,i,j)=>{if(j<0||j>=arr.length)return false;[arr[i],arr[j]]=[arr[j],arr[i]];return true};
+  const removeCount=n=>n?`Verwijder + ${n} cards`:'Verwijder';
+  switch(a){
+    case 'conf':{const {k}=findCard(id);k.conf=k.conf===+v?null:+v;
+      if(state.ui.mode==='conf')keepScroll(()=>changed({editor:true}));
+      else{$$(`[data-act="conf"][data-id="${id}"]`).forEach(x=>x.setAttribute('aria-pressed',+x.dataset.v===k.conf));changed()}
+      return}
+    case 'result':{const {k}=findCard(id);k.result=k.result===v?null:v;keepScroll(()=>changed({editor:true}));focusLater(`[data-act="result"][data-id="${id}"][data-v="${v}"]`);return}
+    case 'clearConf':{if(!armed(b,'Ja, alles wissen'))return;allCards().forEach(k=>k.conf=null);changed({editor:true});toast('Alle scores gewist.');return}
+    case 'clearResult':{if(!armed(b,'Ja, alles wissen'))return;allCards().forEach(k=>k.result=null);changed({editor:true});toast('Alle uitkomsten gewist.');return}
+    case 'addGroup':{const g={id:uid(),name:'Nieuwe categorie',color:COLORS[S.groups.length%COLORS.length],cats:[{id:uid(),name:'Kolom'}]};S.groups.push(g);changed({editor:true});focusLater('#g-'+g.id);return}
+    case 'delGroup':{const g=findGroup(id),cids=new Set(g.cats.map(c=>c.id));
+      if(!armed(b,removeCount(S.cards.filter(k=>cids.has(k.catId)).length)))return;
+      S.cards=S.cards.filter(k=>!cids.has(k.catId));S.groups=S.groups.filter(x=>x!==g);changed({editor:true});return}
+    case 'gMove':{const i=S.groups.findIndex(g=>g.id===id);if(swap(S.groups,i,i+ +v))changed({editor:true});return}
+    case 'color':{findGroup(id).color=v;changed({editor:true});return}
+    case 'addCat':{const c={id:uid(),name:'Nieuwe kolom'};findGroup(id).cats.push(c);changed({editor:true});focusLater('#c-'+c.id);return}
+    case 'delCat':{if(!armed(b,removeCount(S.cards.filter(k=>k.catId===id).length)))return;
+      S.groups.forEach(g=>g.cats=g.cats.filter(c=>c.id!==id));S.cards=S.cards.filter(k=>k.catId!==id);changed({editor:true});return}
+    case 'cMove':{const g=S.groups.find(g=>g.cats.some(c=>c.id===id)),i=g.cats.findIndex(c=>c.id===id);if(swap(g.cats,i,i+ +v))changed({editor:true});return}
+    case 'addRow':{const r={id:uid(),name:'Sprint '+(S.rows.length+1)};S.rows.push(r);changed({editor:true});focusLater('#r-'+r.id);return}
+    case 'delRow':{if(!armed(b))return;S.rows=S.rows.filter(r=>r.id!==id);S.cards.forEach(k=>{if(k.rowId===id)k.rowId=null});changed({editor:true});return}
+    case 'rMove':{const i=S.rows.findIndex(r=>r.id===id);if(swap(S.rows,i,i+ +v))changed({editor:true});return}
+    case 'addCard':{const k=mkCard(id,S.useRows?(S.rows[0]?.id??null):null);S.cards.push(k);changed({editor:true});focusLater('#t-'+k.id);return}
+    case 'delCard':{if(!armed(b,'Verwijder'))return;S.cards=S.cards.filter(k=>k.id!==id);changed({editor:true});return}
+    case 'cardMove':{const k=S.cards.find(x=>x.id===id),sib=S.cards.filter(x=>x.catId===k.catId&&(!S.useRows||rowOf(x,S)===rowOf(k,S)));
+      const j=sib.indexOf(k)+ +v;if(j<0||j>=sib.length)return;const i1=S.cards.indexOf(k),i2=S.cards.indexOf(sib[j]);[S.cards[i1],S.cards[i2]]=[S.cards[i2],S.cards[i1]];
+      changed({editor:true});focusLater(`[data-act="cardMove"][data-id="${id}"][data-v="${v}"]`);return}
+  }
+});
+$$('.modes button').forEach(b=>b.addEventListener('click',()=>{state.ui.mode=b.dataset.mode;save();renderEditor()}));
+
+$('#slideTabs').addEventListener('click',e=>{
+  const t=e.target.closest('[data-tab]');
+  if(t){state.ui.slide=+t.dataset.tab;changed({editor:true});return}
+  const b=e.target.closest('[data-tabact]');if(!b)return;
+  if(b.dataset.tabact==='add'){
+    const src=cur();
+    state.slides.push({id:uid(),title:'Slide '+(state.slides.length+1),useRows:src.useRows,cards:[],
+      rows:src.rows.map(r=>({id:uid(),name:r.name})),groups:src.groups.map(g=>({id:uid(),name:g.name,color:g.color,cats:g.cats.map(c=>({id:uid(),name:c.name}))}))});
+    state.ui.slide=state.slides.length-1;state.ui.mode='content';changed({editor:true});focusLater('#f-stitle');toast('Nieuwe slide met dezelfde kolommen.');
+  }else{
+    const n=cur().cards.length;if(!armed(b,n?`Verwijder slide + ${n} cards`:'Bevestig verwijderen'))return;
+    state.slides.splice(state.ui.slide,1);state.ui.slide=Math.max(0,state.ui.slide-1);changed({editor:true});
+  }
+});
+
+function renderSlide(S){
+  const el=document.createElement('div');el.className='slide';el.style.setProperty('--s','1');
+  const groups=S.groups.filter(g=>g.cats.length),cats=catsOf({groups});
+  const hasRows=S.useRows&&S.rows.length>0,rows=hasRows?S.rows:[null];
+  const show=state.showConf,scope=show==='slide'?S.cards:allCards();
+  const conf=show==='off'?null:stats(scope).avg,rs=state.showResult?resStats(scope):null;
+  const pill=(label,val,bg,fg)=>`<div class="s-pill" data-x="rect"><div class="s-pill-label" data-x="text">${label}</div><div class="s-pill-val" data-x="rect" style="background:${bg}"><span data-x="text" style="color:${fg}">${val}</span></div></div>`;
+  let h=`<div class="s-head"><div class="s-titles">${state.piName?`<div class="s-eyebrow" data-x="text">${esc(state.piName)}</div>`:''}<div class="s-title" data-x="text">${esc(S.title||'Naamloze slide')}</div></div><div class="s-pills">`;
+  if(conf!=null){const r=Math.round(conf);h+=pill(show==='pi'?'PI-confidence':'Confidence',fmt(conf),CONF[r],confInk(r))}
+  if(rs?.n)h+=pill(show==='slide'?'Gehaald':'PI gehaald',rs.pct+'%',CARD,CARD_TITLE);
+  h+='</div></div>';
+  if(!cats.length){el.innerHTML=h+'<div class="s-empty">Voeg in de editor een categorie toe om kolommen te maken.</div>';return el}
+
+  const lay=cats.map(c=>{
+    const cards=S.cards.filter(k=>k.catId===c.id);
+    const spans=hasRows?cards.map(k=>({k,...spanOf(k,S)})).filter(x=>x.b>x.a).sort((x,y)=>x.a-y.a||(y.b-y.a)-(x.b-x.a)):[];
+    const ends=[];spans.forEach(x=>{let l=ends.findIndex(e=>e<x.a);if(l<0){l=ends.length;ends.push(-1)}ends[l]=x.b;x.lane=l});
+    const busyIn=ri=>spans.filter(x=>x.a<=ri&&x.b>=ri).map(x=>x.lane);
+    const singles=cards.filter(k=>!spans.some(x=>x.k===k));
+    const clash=singles.some(k=>{const busy=busyIn(spanOf(k,S).a);return busy.length&&Math.max(...busy)+1>=ends.length});
+    return {c,spans,singles,busyIn,n:Math.max(1,ends.length+(clash?1:0))};
+  });
+  const off=hasRows?2:1,P='calc(8px * var(--s))',start=[];
+  lay.reduce((col,L)=>{start.push(col);return col+L.n},off);
+  const tracks=lay.map(L=>Array(L.n).fill(`minmax(0,${(1/L.n).toFixed(4)}fr)`).join(' ')).join(' ');
+  h+=`<div class="s-grid" style="grid-template-columns:${hasRows?'calc(104px * var(--s)) ':''}${tracks};grid-template-rows:auto auto repeat(${rows.length},minmax(0,1fr))">`;
+  let gi=0;
+  groups.forEach(g=>{const w=lay.slice(gi,gi+g.cats.length).reduce((t,L)=>t+L.n,0);
+    h+=`<div class="g-head" data-x="rect" style="grid-column:${start[gi]} / span ${w};grid-row:1;background:${g.color}"><span data-x="text" style="color:${inkFor(g.color)}">${esc(g.name)}</span></div>`;gi+=g.cats.length});
+  lay.forEach((L,i)=>{h+=`<div class="c-head" data-x="rect" style="grid-column:${start[i]} / span ${L.n};grid-row:2"><span data-x="text" style="color:${tint(L.c.g.color,.3)}">${esc(L.c.name)}</span></div>`});
+  rows.forEach((r,ri)=>{
+    if(hasRows)h+=`<div class="r-head" data-x="rect" style="grid-column:1;grid-row:${3+ri}"><span data-x="text">${esc(r.name)}</span></div>`;
+    lay.forEach((L,i)=>{h+=`<div class="lane" data-x="rect" style="grid-column:${start[i]} / span ${L.n};grid-row:${3+ri}"></div>`});
+  });
+  lay.forEach((L,i)=>{
+    rows.forEach((r,ri)=>{
+      const busy=L.busyIn(ri),from=busy.length?Math.max(...busy)+1:0;
+      if(from>=L.n)return;
+      const cards=L.singles.filter(k=>!hasRows||rowOf(k,S)===r.id);
+      h+=`<div class="cell" style="grid-column:${start[i]+from} / span ${L.n-from};grid-row:${3+ri};padding:${P} ${P} ${P} ${from?0:P}">${cards.map(k=>cardHTML(k,S)).join('')}</div>`;
+    });
+    L.spans.forEach(x=>{
+      h+=`<div class="cell" style="grid-column:${start[i]+x.lane};grid-row:${3+x.a} / span ${x.b-x.a+1};padding:${P} ${x.lane===L.n-1?P:0} ${P} ${x.lane?0:P}">${cardHTML(x.k,S,x)}</div>`;
+    });
+  });
+  el.innerHTML=h+'</div>';
+  return el;
+}
+function cardHTML(k,S,sp){
+  const badge=state.showConf!=='off'&&k.conf,R=state.showResult&&RESULTS[k.result];
+  return `<div class="card${sp?' span':''}" data-x="rect" data-card="${k.id}">`
+    +(sp?`<div class="c-span" data-x="text">${esc(`${S.rows[sp.a].name||'Rij'} – ${S.rows[sp.b].name||'Rij'}`)}</div>`:'')
+    +`<div class="c-top"><div class="c-title${k.title?'':' ph'}" data-x="text">${esc(k.title||'Naamloze card')}</div>`
+    +(badge?`<div class="c-badge" data-x="ellipse" style="background:${CONF[k.conf]}"><span data-x="text" style="color:${confInk(k.conf)}">${k.conf}</span></div>`:'')
+    +`</div>`
+    +(k.desc.trim()?`<div class="c-desc" data-x="text">${esc(k.desc.trim())}</div>`:'')
+    +(R?`<div class="c-res-row"><div class="c-res" data-x="rect" style="background:${R.color}"><span data-x="text" style="color:${inkFor(R.color)}">${R.label}</span></div></div>`:'')
+    +`</div>`;
+}
+function fit(el){
+  const cells=$$('.cell,.r-head',el),set=s=>el.style.setProperty('--s',s);
+  const over=()=>cells.some(c=>c.scrollHeight>c.clientHeight+1);
+  set(1);if(!over())return {s:1,overflow:false};
+  let lo=.6,hi=1;set(lo);if(over())return {s:lo,overflow:true};
+  for(let i=0;i<5;i++){const m=(lo+hi)/2;set(m);if(over())hi=m;else lo=m}
+  lo=Math.floor(lo*100)/100;set(lo);
+  return {s:lo,overflow:false};
+}
+function renderPreview(){
+  const wrap=$('#slideWrap'),el=renderSlide(cur());
+  wrap.replaceChildren(el);
+  const r=fit(el),fs=$('#fitStatus');
+  fs.classList.toggle('warn',r.overflow);
+  fs.textContent=r.overflow?'Past niet volledig: verplaats cards naar een andere kolom of slide':r.s<1?`Tekst automatisch verkleind naar ${Math.round(r.s*100)}%`:'Alles past op 100%';
+  layoutPreview();
+}
+function layoutPreview(){
+  const vp=$('#viewport'),wrap=$('#slideWrap'),el=wrap.firstElementChild;if(!el)return;
+  const cs=getComputedStyle(vp),w=vp.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);
+  const sc=Math.max(.1,Math.min(w/1280,document.fullscreenElement===vp?vp.clientHeight/720:Infinity));
+  wrap.style.width=1280*sc+'px';wrap.style.height=720*sc+'px';el.style.transform=`scale(${sc})`;
+}
+let lastW=0,roFrame=0;
+new ResizeObserver(([entry])=>{
+  const w=Math.round(entry.contentRect.width);
+  if(w===lastW&&!document.fullscreenElement)return;
+  lastW=w;cancelAnimationFrame(roFrame);roFrame=requestAnimationFrame(layoutPreview);
+}).observe($('#viewport'));
+document.addEventListener('fullscreenchange',layoutPreview);
+$('#slideWrap').addEventListener('click',e=>{
+  if(document.fullscreenElement)return;
+  const c=e.target.closest('[data-card]');if(!c)return;
+  state.ui.mode='content';renderEditor();
+  const card=$('#ec-'+c.dataset.card);if(!card)return;
+  card.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+  card.classList.remove('flash');void card.offsetWidth;card.classList.add('flash');
+  $('input',card).focus({preventScroll:true});
+});
+$('#btnPresent').addEventListener('click',()=>{
+  const vp=$('#viewport'),fail=()=>toast('Volledig scherm is hier niet beschikbaar.');
+  vp.requestFullscreen?vp.requestFullscreen().catch(fail):fail();
+});
+document.addEventListener('keydown',e=>{
+  if(document.fullscreenElement!==$('#viewport'))return;
+  const step=['ArrowRight','PageDown',' '].includes(e.key)?1:['ArrowLeft','PageUp'].includes(e.key)?-1:0;
+  if(!step)return;
+  e.preventDefault();state.ui.slide=Math.min(state.slides.length-1,Math.max(0,state.ui.slide+step));changed({editor:true});
+});
+$('#showConf').addEventListener('change',e=>{state.showConf=e.target.value;changed()});
+$('#showResult').addEventListener('change',e=>{state.showResult=e.target.value==='1';changed()});
+$('#piName').addEventListener('input',e=>{state.piName=e.target.value;changed()});
+
+let libLoad=null;
+function loadPptx(){
+  if(window.PptxGenJS)return Promise.resolve();
+  return libLoad??=new Promise((res,rej)=>{
+    const s=document.createElement('script');s.src='pptxgen.bundle.js';s.onload=res;
+    s.onerror=()=>{libLoad=null;s.remove();rej(new Error('de PowerPoint-bibliotheek kon niet laden'))};
+    document.head.appendChild(s);
+  });
+}
+function toHex(c){
+  const m=c.match(/rgba?\(([^)]+)\)/);if(!m)return null;
+  const p=m[1].split(/[ ,\/]+/).filter(Boolean).map(Number);
+  if(p.length>3&&p[3]===0)return null;
+  return p.slice(0,3).map(v=>Math.round(v).toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+function buildPptx(){
+  const pptx=new PptxGenJS();pptx.layout='LAYOUT_WIDE';pptx.title=state.piName||'PI planning';
+  const host=document.createElement('div');host.className='export-host';document.body.appendChild(host);
+  const warn=[];
+  try{
+    state.slides.forEach((S,i)=>{
+      const el=renderSlide(S);host.replaceChildren(el);
+      if(fit(el).overflow)warn.push(i+1);
+      const base=el.getBoundingClientRect(),ps=pptx.addSlide();ps.background={color:SLIDE_BG.slice(1)};
+      $$('[data-x]',el).forEach(n=>{
+        const r=n.getBoundingClientRect();if(r.width<1||r.height<1)return;
+        const box={x:(r.left-base.left)/96,y:(r.top-base.top)/96,w:r.width/96,h:r.height/96};
+        const cs=getComputedStyle(n),kind=n.dataset.x;
+        if(kind==='text'){
+          const txt=cs.textTransform==='uppercase'?n.textContent.toUpperCase():n.textContent;
+          const fpx=parseFloat(cs.fontSize),lh=parseFloat(cs.lineHeight)||fpx*1.2,single=r.height<lh*1.6;
+          const align=cs.textAlign==='center'?'center':['right','end'].includes(cs.textAlign)?'right':'left';
+          const ls=parseFloat(cs.letterSpacing)||0;
+          ps.addText(txt,{...box,w:align==='left'&&!single?box.w+Math.min(box.w*.06,10/96):box.w,fontFace:'Figtree',fontSize:Math.round(fpx*7.5)/10,
+            bold:parseInt(cs.fontWeight,10)>=600,color:toHex(cs.color)||INK.slice(1),align,valign:single?'middle':'top',
+            margin:0,lineSpacing:single?undefined:Math.round(lh*7.5)/10,charSpacing:ls?ls*.75:undefined,wrap:!single,fit:'none'});
+          return;
+        }
+        const fill=toHex(cs.backgroundColor),rad=parseFloat(cs.borderTopLeftRadius)||0;
+        const shape=kind==='ellipse'?pptx.ShapeType.ellipse:rad>0?pptx.ShapeType.roundRect:pptx.ShapeType.rect;
+        ps.addShape(shape,{...box,rectRadius:kind!=='ellipse'&&rad>0?Math.min(rad,r.width/2,r.height/2)/96:undefined,
+          fill:fill?{color:fill}:{type:'none'},line:{type:'none'}});
+      });
+    });
+    return pptx.write({outputType:'blob'}).then(blob=>({blob,warn}));
+  }finally{host.remove()}
+}
+function download(filename,data){
+  const blob=data instanceof Blob?data:new Blob([data],{type:'application/json'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+}
+const baseName=()=>(state.piName||'').replace(/[\\/:*?"<>|]+/g,'').trim()||'PI planning';
+const btnPptx=$('#btnPptx');
+['pointerenter','focus'].forEach(ev=>btnPptx.addEventListener(ev,()=>loadPptx().catch(()=>{}),{once:true}));
+btnPptx.addEventListener('click',async()=>{
+  btnPptx.disabled=true;btnPptx.textContent='Bezig…';
+  try{
+    await Promise.all([loadPptx(),document.fonts?.ready]);
+    const {blob,warn}=await buildPptx();
+    download(baseName()+' planning.pptx',blob);
+    toast(warn.length?`PowerPoint klaar. Let op: slide ${warn.join(', ')} past niet volledig.`:'PowerPoint klaar.');
+  }catch(err){toast('Exporteren lukte niet: '+(err?.message||err))}
+  finally{btnPptx.disabled=false;btnPptx.textContent='Exporteer PowerPoint'}
+});
+const menu=$('#moreMenu');
+menu.addEventListener('click',e=>{
+  const b=e.target.closest('[data-menu]');if(!b)return;
+  const m=b.dataset.menu,replace=next=>{state=next;menu.open=false;syncControls();changed({editor:true})};
+  if(m==='json'){menu.open=false;const {ui,...rest}=state;download(baseName()+' bord.json',JSON.stringify(rest,null,2));toast('Bord opgeslagen als JSON.')}
+  if(m==='import'){menu.open=false;$('#fileIn').click()}
+  if(m==='example'&&armed(b,'Huidig bord vervangen?'))replace(exampleState());
+  if(m==='reset'&&armed(b,'Alles wissen?'))replace(emptyState(state.piName));
+});
+document.addEventListener('click',e=>{if(menu.open&&!menu.contains(e.target))menu.open=false});
+$('#fileIn').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  f.text().then(txt=>{state=normalize(JSON.parse(txt));state.isExample=false;syncControls();changed({editor:true});toast('Bord geïmporteerd.')})
+    .catch(err=>toast('Importeren lukte niet: '+(err.message||'ongeldig bestand')))
+    .finally(()=>{e.target.value=''});
+});
+$('#noticeClose').addEventListener('click',()=>{state.isExample=false;changed()});
+$('#noticeReset').addEventListener('click',e=>{if(!armed(e.currentTarget,'Zeker?'))return;state=emptyState(state.piName);syncControls();changed({editor:true})});
+
+function syncControls(){$('#piName').value=state.piName;$('#showConf').value=state.showConf;$('#showResult').value=state.showResult?'1':'0'}
+syncControls();renderSummary();renderTabs();renderEditor();renderPreview();
+document.fonts?.ready?.then(renderPreview);
+})();
+</script>
+</body>
+</html>
